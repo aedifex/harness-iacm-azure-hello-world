@@ -11,6 +11,13 @@ terraform {
 
 provider "azurerm" {
   features {}
+
+  subscription_id = var.subscription_id
+}
+
+variable "subscription_id" {
+  description = "Azure subscription ID. Set via workspace variable or TF_VAR_subscription_id / ARM_SUBSCRIPTION_ID env var. Never hardcode this."
+  type        = string
 }
 
 variable "resource_group_name" {
