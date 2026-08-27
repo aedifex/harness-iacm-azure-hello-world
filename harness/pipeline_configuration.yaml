@@ -1,0 +1,153 @@
+pipeline:
+  name: harness-iacm-azure-hello-world
+  identifier: harnessiacmazurehelloworld
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Provision
+        identifier: Provision
+        description: ""
+        type: IACM
+        spec:
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          workspace: YOUR_IACM_WORKSPACE_IDENTIFIER
+          execution:
+            steps:
+              - step:
+                  type: IACMTerraformPlugin
+                  name: init
+                  identifier: init
+                  timeout: 10m
+                  spec:
+                    command: init
+
+              - step:
+                  type: IACMTerraformPlugin
+                  name: plan
+                  identifier: plan
+                  timeout: 10m
+                  spec:
+                    command: plan
+
+              - parallel:
+                  - step:
+                      type: Run
+                      name: Install Checkov
+                      identifier: Install_Checkov
+                      spec:
+                        shell: Sh
+                        command: |-
+                          python3 -m pip install --upgrade pip
+                          pip install checkov
+                          which checkov
+                          checkov -v
+
+                  - step:
+                      type: Run
+                      name: Install tfsec
+                      identifier: Install_tfsec
+                      spec:
+                        shell: Sh
+                        command: |-
+                          curl -L https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+                          chmod +x tfsec
+                          sudo mv tfsec /usr/local/bin/
+
+                          tfsec . --soft-fail
+
+              - step:
+                  type: Checkov
+                  name: Iac Security Scans
+                  identifier: Iac_Security_Scans
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: repository
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
+
+              - step:
+                  type: IACMTerraformPlugin
+                  name: apply
+                  identifier: apply
+                  timeout: 10m
+                  spec:
+                    command: apply
+        tags: {}
+
+    - stage:
+        name: Approval
+        identifier: Approval
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Manual Approval
+                  identifier: Manual_Approval
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Please review the following information
+                      and approve the pipeline progression
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                      userGroups:
+                        - account._account_all_users
+                    isAutoRejectEnabled: false
+                    approverInputs: []
+        tags: {}
+
+    - stage:
+        name: Destroy
+        identifier: Destroy
+        description: ""
+        type: IACM
+        spec:
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          workspace: YOUR_IACM_WORKSPACE_IDENTIFIER
+          execution:
+            steps:
+              - step:
+                  type: IACMOpenTofuPlugin
+                  name: init
+                  identifier: init
+                  timeout: 10m
+                  spec:
+                    command: init
+
+              - step:
+                  type: IACMOpenTofuPlugin
+                  name: planDestroy
+                  identifier: planDestroy
+                  timeout: 10m
+                  spec:
+                    command: plan-destroy
+
+              - step:
+                  type: IACMOpenTofuPlugin
+                  name: destroy
+                  identifier: destroy
+                  timeout: 10m
+                  spec:
+                    command: destroy
+        tags: {}
