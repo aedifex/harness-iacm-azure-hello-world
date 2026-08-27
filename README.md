@@ -34,4 +34,4 @@ Harness IACM wraps Terraform with the governance and visibility that raw Terrafo
 
 ## Status
 
-Work in progress. Scaffold and pipeline config to follow.
+Working reference implementation. Replace the example workspace and Azure configuration with values appropriate to your environment.
